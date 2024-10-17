@@ -5,5 +5,12 @@
     "weight_decay": 0.006465625078828261,
     "amsgrad": false,
     "loss": -1.8724031448364258
+  },
+  "TANG_DM_18_19": {
+    "optimizer": "adamw",
+    "lr": 0.0021572345243067725,
+    "weight_decay": 0.005654694089909866,
+    "amsgrad": true,
+    "loss": -0.8881511092185974
   }
 }

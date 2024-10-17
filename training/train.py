@@ -5,13 +5,13 @@ from datetime import datetime
 import optuna
 import pytorch_lightning as pl
 
-from training.data_loading import CommaData
+from data_loading import TWilsonData
 from model import NanoFFModel
 
 
 def objective(trial, platform: str, save_as: str):
     pl.seed_everything(0)
-    data = CommaData(
+    data = TWilsonData(
         platform,
         batch_size=2 ** 16,
     )
@@ -20,19 +20,18 @@ def objective(trial, platform: str, save_as: str):
         "lr": trial.suggest_float("lr", 1e-6, 1., log=True),
         "weight_decay": trial.suggest_float("weight_decay", 0.0, 1e-2),
     }
-    match optimizer:
-        case "adam":
+    if optimizer == "adam":
             opt_args["amsgrad"] = trial.suggest_categorical("amsgrad", [True, False])
-        case "sgd":
+    elif optimizer == "sgd":
             opt_args["momentum"] = trial.suggest_float("momentum", 0.0, 1.0)
             opt_args["nesterov"] = trial.suggest_categorical("nesterov", [True, False])
             if not opt_args["nesterov"]:
                 opt_args["dampening"] = trial.suggest_float("dampening", 0.0, 1.0)
-        case "rmsprop":
+    elif optimizer == "rmsprop":
             opt_args["alpha"] = trial.suggest_float("alpha", 0.0, 1.0)
             opt_args["momentum"] = trial.suggest_float("momentum", 0.0, 1.0)
             opt_args["centered"] = trial.suggest_categorical("centered", [True, False])
-        case "adamw":
+    elif optimizer == "adamw":
             opt_args["amsgrad"] = trial.suggest_categorical("amsgrad", [True, False])
     model = NanoFFModel(
         from_weights=False,
@@ -68,7 +67,7 @@ if __name__ == "__main__":
     assert platform in fingerprint_migration, f"Platform {platform} not found in fingerprint_migration.json"
 
     study = optuna.create_study(
-        study_name=f"{platform}_{datetime.today().strftime("%b_%d")}",
+        study_name=f"{platform}_{datetime.today().strftime('%b_%d')}",
         direction="minimize",
         storage="sqlite:///optuna.db",
         load_if_exists=True,
@@ -95,8 +94,8 @@ if __name__ == "__main__":
         with open("best_params.json", "w") as f:
             json.dump(best_params, f, indent=2)
         weights = study.best_trial.user_attrs["weights"]
-        with open("../../openpilot/selfdrive/car/torque_data/neural_ff_weights.json") as f:
+        with open("neural_ff_weights.json") as f:
             model_params = json.load(f)
         model_params[platform] = weights
-        with open("../../openpilot/selfdrive/car/torque_data/neural_ff_weights.json", "w") as f:
+        with open("neural_ff_weights.json", "w") as f:
             json.dump(model_params, f)

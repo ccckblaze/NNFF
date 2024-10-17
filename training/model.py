@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Tuple, Union
 
 import numpy as np
 import optuna
@@ -14,10 +14,10 @@ from torch import nn
 class NanoFFModel(pl.LightningModule):
     def __init__(
             self,
-            hidden_dims: tuple[int, int, int] = (16, 8, 4),
+            hidden_dims: Tuple[int, int, int] = (16, 8, 4),
             from_weights: bool = False,
-            trial: optuna.Trial | None = None,
-            platform: str | None = None,
+            trial: Union[optuna.Trial, None] = None,
+            platform: Union[str, None] = None,
             optimizer: Literal["adam", "sgd", "rmsprop", "adamw"] = "adam",
             opt_args: dict = {},
     ):
@@ -90,16 +90,15 @@ class NanoFFModel(pl.LightningModule):
                 raise optuna.TrialPruned()
 
     def configure_optimizers(self):
-        match self.optimizer:
-            case "adam":
+        if self.optimizer == "adam":
                 optimizer = torch.optim.Adam(self.parameters(), **self.opt_args)
-            case "sgd":
+        elif self.optimizer == "sgd":
                 optimizer = torch.optim.SGD(self.parameters(), **self.opt_args)
-            case "rmsprop":
+        elif self.optimizer == "rmsprop":
                 optimizer = torch.optim.RMSprop(self.parameters(), **self.opt_args)
-            case "adamw":
+        elif self.optimizer == "adamw":
                 optimizer = torch.optim.AdamW(self.parameters(), **self.opt_args)
-            case _:
+        else:
                 raise ValueError(f"Invalid optimizer: {self.optimizer}")
         return optimizer
 

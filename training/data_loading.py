@@ -1,6 +1,7 @@
 import abc
 import glob
 import os
+from typing import List, Dict, Union, Optional
 
 import numpy as np
 import pandas as pd
@@ -13,7 +14,7 @@ class LateralData(pl.LightningDataModule, abc.ABC):
     df_train: pd.DataFrame
     df_val: pd.DataFrame
 
-    x_cols: list[str]
+    x_cols: List[str]
     y_col: str
 
     N_epochs: int
@@ -24,7 +25,7 @@ class LateralData(pl.LightningDataModule, abc.ABC):
         self.symmetrize = symmetrize
         self.batch_size = batch_size
 
-    def bucket(self, df: pd.DataFrame, bins: int | np.ndarray | dict[str, int | np.ndarray] = 15, bucket_size: int = -1) -> pd.DataFrame:
+    def bucket(self, df: pd.DataFrame, bins: Union[int, np.ndarray, Dict[str, Union[int, np.ndarray]]] = 15, bucket_size: int = -1) -> pd.DataFrame:
         """Splits the DataFrame into buckets to ensure that the validation set has a representative distribution."""
         df = df.copy()
         for col in self.x_cols + [self.y_col]:
@@ -40,12 +41,12 @@ class LateralData(pl.LightningDataModule, abc.ABC):
             else:
                 bucket_size_ = bucket_size
             print(f"Bucket size for {col}: {bucket_size_}")
-            df = df.groupby("bucket").apply(
+            _df = df.groupby("bucket").apply(
                 lambda x: x.sample(bucket_size_, random_state=0, replace=True)
             )
-            df.index = df.index.droplevel(0)
-            df = df.drop(columns=["bucket"])
-        return df
+            _df.index = _df.index.droplevel(0)
+            _df = _df.drop(columns=["bucket"])
+        return _df
 
     def symmetrize_frame(self, df: pd.DataFrame) -> pd.DataFrame:
         return pd.concat([df, df.assign(**{
@@ -98,7 +99,7 @@ class CommaData(LateralData):
 
     N_epochs = 1500
 
-    def setup(self, stage: str | None = None):
+    def setup(self, stage: Optional[str] = None):
         files = glob.glob(f"data/{self.platform}/*.csv")
         assert len(files) > 0, f"No data found for {self.platform}"
         dfs = []
@@ -156,11 +157,10 @@ class TWilsonData(LateralData):
     N_train = 400_000
     N_val = 1_000_000
 
-    N_epochs = 5000
+    N_epochs = 200
 
-    def setup(self, stage: str | None = None):
-        assert self.platform == "CHEVROLET_VOLT_PREMIER_2017"
-        df = pd.read_feather("../data/voltlat_large.feather", columns=self.x_cols + [self.y_col])
+    def setup(self, stage: Optional[str] = None):
+        df = pd.read_feather("/Users/steven/Projects/op/capture_data/tang_out/TANG_DM_18_19_torque_adjusted_eps.feather", columns=self.x_cols + [self.y_col])
 
         df = df[(df[self.y_col] >= -1) & (df[self.y_col] <= 1)]
         # roll
